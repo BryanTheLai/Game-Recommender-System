@@ -34,3 +34,35 @@ Top N Game Recommendations and using three models
 ├── references/
 │   └── *.pdf        # Data dictionaries, manuals
 └── requirements.txt # Project dependencies
+```
+
+## Data Exploration
+**games.csv:**
+app_id			      -Int		  - product id of game 
+title			        -String		- the name of game
+date_release	    -Date		  - the date that the game release
+win			          -Boolean	- the game supported on Windows 
+mac			          -Boolean	- the game supported on MacOS
+Linux			        -Boolean	- the game supported on Linux
+rating			      -String		- the rating given by users
+positive ratio		-int (%)	- the percentage rating by users
+user_review		    -int		  - total users that review the game
+price_final		    -float		- Price in US dollars $ calculated after the discount
+price_original		-float		- original price before discount(if any)
+discount		      -int(%)		- discount on that game(if any)
+steam_deck		    -Boolean	- the game supported on steam deck
+
+**users.csv:**
+user_id			      -Int		  -user id
+products		      -Int	  	-no. of game 
+reviews			      -Int	  	-reviews
+
+**recommendations.csv:**
+app_id			      -Int 		  - product id of the game
+helpful		      	-Int		  - no. of users found that a recommendation helpful
+funny			        -Int		  - no. of users found that a recommendation funny
+date			        -Date		  - date of publishing
+is_recommended		-Boolean	- whether the user recommend the product
+hours			        -time		  - hours playing on that game
+user_id			      -Int		  - user id
+review_id		      -Int	  	- review id (auto-generated)
