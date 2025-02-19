@@ -37,7 +37,8 @@ Top N Game Recommendations and using three models
 ```
 
 ## Data Exploration
-**games.csv:**
+```
+games.csv:
 app_id			      -Int		  - product id of game 
 title			        -String		- the name of game
 date_release	    -Date		  - the date that the game release
@@ -52,12 +53,12 @@ price_original		-float		- original price before discount(if any)
 discount		      -int(%)		- discount on that game(if any)
 steam_deck		    -Boolean	- the game supported on steam deck
 
-**users.csv:**
+users.csv:
 user_id			      -Int		  -user id
 products		      -Int	  	-no. of game 
 reviews			      -Int	  	-reviews
 
-**recommendations.csv:**
+recommendations.csv:
 app_id			      -Int 		  - product id of the game
 helpful		      	-Int		  - no. of users found that a recommendation helpful
 funny			        -Int		  - no. of users found that a recommendation funny
@@ -66,3 +67,5 @@ is_recommended		-Boolean	- whether the user recommend the product
 hours			        -time		  - hours playing on that game
 user_id			      -Int		  - user id
 review_id		      -Int	  	- review id (auto-generated)
+
+```
