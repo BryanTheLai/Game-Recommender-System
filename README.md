@@ -70,4 +70,10 @@ is_recommended		-Boolean	- whether the user recommend the product
 hours			-time		- hours playing on that game
 user_id			-Int		- user id
 review_id		-Int		- review id (auto-generated)
+
+
+games_metadata.json:
+app_id			-Int 		- product id of the game
+description		-String		- brief description about the game 
+tags			-String		- categories/style of the game
 ```
