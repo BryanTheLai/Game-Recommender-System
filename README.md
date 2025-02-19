@@ -1,5 +1,5 @@
-# Movielens Recommender System
-Put the csv files in data/raw: [MovieLens Dataset from Kaggle](https://www.kaggle.com/datasets/rounakbanik/the-movies-dataset/data)
+# Game Recommender System
+Put the csv files in data/raw: [Steam Dataset from Kaggle](https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam)
 
 ## Project Structure
 
