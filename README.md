@@ -1,6 +1,18 @@
 # Game Recommender System
 Put the csv files in data/raw: [Steam Dataset from Kaggle](https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam)
 
+## Models
+Top N Game Recommendations and using three models 
+1. Collaborative Filtering / NN 
+2. Content-Based			 
+3. Matrix Factorization
+
+## Metrics
+* Precision
+* Recall
+* F1 Score
+
+
 ## Project Structure
 
 ```
