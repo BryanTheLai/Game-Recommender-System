@@ -1,6 +1,10 @@
 # Game Recommender System
 Put the csv files in data/raw: [Steam Dataset from Kaggle](https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam)
 
+The Steam Store dataset contains over 41 million cleaned and preprocessed user recommendations (reviews).
+**Steam Store** is a leading online platform for purchasing and downloading gaming-related content. 
+Contains detailed information about games and add-ons.
+
 ## Models
 Top N Game Recommendations and using three models 
 1. Collaborative Filtering / NN 
