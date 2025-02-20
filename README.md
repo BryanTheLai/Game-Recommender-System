@@ -57,8 +57,8 @@ steam_deck		-Boolean	- the game supported on steam deck
 
 users.csv:
 user_id			-Int		-user id
-products		-Int		-no. of game 
-reviews			-Int		-reviews
+products		-Int		-no. of game purchased by the user
+reviews			-Int		-no. of reviews 
 
 
 recommendations.csv:
