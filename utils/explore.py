@@ -27,14 +27,15 @@ def explore_csv(path):
     print(f"Total Rows: {num_rows}\n")
     print(result)
 
-file_path = "data/raw/games.csv"
-explore_csv(file_path)
+# Example Usage:
+# file_path = "data/raw/games.csv"
+# explore_csv(file_path)
 
-file_path = "data/raw/recommendations.csv"
-explore_csv(file_path)
+# file_path = "data/raw/recommendations.csv"
+# explore_csv(file_path)
 
-file_path = "data/raw/users.csv"
-explore_csv(file_path)
+# file_path = "data/raw/users.csv"
+# explore_csv(file_path)
 
-file_path = "data/raw/games_metadata.json"
-explore_csv(file_path)
+# file_path = "data/raw/games_metadata.json"
+# explore_csv(file_path)
