@@ -163,3 +163,7 @@ cython_debug/
 
 # Datasets
 *.csv
+*.json
+
+# Models
+*.pkl
