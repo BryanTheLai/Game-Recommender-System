@@ -7,7 +7,7 @@ Contains detailed information about games and add-ons.
 
 ## Models
 Top N Game Recommendations and using three models 
-1. Collaborative Filtering / NN 
+1. Collaborative Filtering
 2. Content-Based			 
 3. Matrix Factorization
 
