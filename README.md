@@ -77,3 +77,24 @@ app_id			-Int 		- product id of the game
 description		-String		- brief description about the game 
 tags			-String		- categories/style of the game
 ```
+
+| Concept                 | Definition in Recommender Context                                                                 | Relation to Code / Formula                                                                   |
+| :---------------------- | :------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------- |
+| **K**                   | The **number** of top recommendations you are evaluating (e.g., K=10, K=20).                      | Parameter `k` in `precision_at_k`, `recall_at_k`, and `recommend_for_user` functions.      |
+| **Relevant Items**      | The items the user *actually interacted with* in the **test set** (hidden data).                  | `actual_items` (a `Set[int]` for a specific user from `filtered_test_items_map`).            |
+| **Recommended Items @K** | The **top K** items suggested by your recommendation function for a specific user.                 | `recommended_items[:k]` (a `List[int]`, the first `k` items from `recommend_for_user`).       |
+| **True Positives (TP)** | Items **correctly recommended**: they are in the top K recommendations AND are relevant (in test set). | `hits = len(set(recommended_items[:k]) & actual_items)`                                       |
+| **False Positives (FP)**| Items **incorrectly recommended**: they are in the top K recommendations BUT are NOT relevant.      | `k - hits` (Items in the top K list that are not in `actual_items`).                         |
+| **False Negatives (FN)**| Items **missed**: they are relevant (in test set) BUT are NOT in the top K recommendations.        | `len(actual_items) - hits` (Relevant items that were not among the top K recommendations). |
+|                         |                                                                                                   |                                                                                              |
+| **Precision@K**         | **Accuracy of recommendations:** Of the K items recommended, what fraction were actually relevant?    | `hits / k` <br> (Equivalent to `TP / (TP + FP)`)                                               |
+| **Recall@K**            | **Completeness of recommendations:** Of all the relevant items, what fraction did you recommend in the top K? | `hits / len(actual_items)` <br> (Equivalent to `TP / (TP + FN)`)                               |
+
+
+
+```
+user_median_interactions = int(user_interaction_counts.median())
+item_median_interactions = int(item_interaction_counts.median())
+print(f"User Median: {user_median_interactions}")
+print(f"Item Median: {user_median_interactions}")
+```
