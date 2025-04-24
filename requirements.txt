@@ -5,3 +5,4 @@ seaborn==0.13.2
 scikit-learn==1.6.1
 implicit==0.7.2
 streamlit==1.44.1
+kneed==0.8.5
