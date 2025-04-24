@@ -1,24 +1,26 @@
 # app.py
 import streamlit as st
 import pandas as pd
-import numpy as np # Although not used directly in this snippet, cosine_similarity matrix is numpy
+import numpy as np
 import pickle
 import os
-from typing import Dict, List, Tuple # For type hinting
+from typing import Dict, List, Tuple
 
 # --- Configuration & Constants ---
-MODELS_DIR = "models" # Relative path to the models directory
+MODELS_DIR = "models"  # Relative path to the models directory
 SIMILARITY_MATRIX_FILENAME = "item_similarity_matrix.pkl"
 ITEM_MAP_FILENAME = "item_map.pkl"
 ITEM_MAP_INV_FILENAME = "item_map_inv.pkl"
 GAMES_DF_FILENAME = "filtered_games_metadata.pkl"
 
 # --- Caching Data Loading ---
-# Use st.cache_data to load these artifacts only once
 @st.cache_data
 def load_artifacts() -> Tuple[np.ndarray, Dict[int, int], Dict[int, int], pd.DataFrame]:
-    """Loads the recommender artifacts from pickle files."""
-    print("Loading artifacts...") # Add print statement to see when cache is missed
+    """
+    Loads the recommender artifacts (similarity matrix, item maps, games metadata)
+    from pickle files using Streamlit's caching.
+    """
+    print("Attempting to load artifacts...")  # Log cache misses
     artifacts_loaded = {}
     required_files = {
         'similarity_matrix': os.path.join(MODELS_DIR, SIMILARITY_MATRIX_FILENAME),
@@ -27,208 +29,239 @@ def load_artifacts() -> Tuple[np.ndarray, Dict[int, int], Dict[int, int], pd.Dat
         'games_df': os.path.join(MODELS_DIR, GAMES_DF_FILENAME),
     }
 
+    all_loaded_successfully = True
     for name, path in required_files.items():
-        try:
-            with open(path, 'rb') as f:
-                artifacts_loaded[name] = pickle.load(f)
-        except FileNotFoundError:
-            st.error(f"Error: Artifact file not found at {path}. Make sure the model artifacts are in the '{MODELS_DIR}' directory.")
-            return None, None, None, None # Return None for all if one is missing
-        except Exception as e:
-            st.error(f"Error loading artifact {name} from {path}: {e}")
-            return None, None, None, None
+        if not os.path.exists(path):
+            st.error(f"Error: Artifact file not found at '{path}'. Ensure it exists in the '{MODELS_DIR}' directory.")
+            all_loaded_successfully = False
+            artifacts_loaded[name] = None # Mark as None if missing
+        else:
+            try:
+                with open(path, 'rb') as f:
+                    artifacts_loaded[name] = pickle.load(f)
+                print(f"Successfully loaded artifact: {name}")
+            except Exception as e:
+                st.error(f"Error loading artifact '{name}' from '{path}': {e}")
+                all_loaded_successfully = False
+                artifacts_loaded[name] = None # Mark as None if loading failed
 
-    print("Artifacts loaded successfully.")
+    if not all_loaded_successfully:
+        print("One or more artifacts failed to load.")
+        # Return None for all if any failed, allows easier checking later
+        return None, None, None, None
+
+    print("All artifacts loaded successfully.")
     return (
-        artifacts_loaded['similarity_matrix'],
-        artifacts_loaded['item_map'],
-        artifacts_loaded['item_map_inv'],
-        artifacts_loaded['games_df']
+        artifacts_loaded.get('similarity_matrix'),
+        artifacts_loaded.get('item_map'),
+        artifacts_loaded.get('item_map_inv'),
+        artifacts_loaded.get('games_df')
     )
 
 # --- Recommendation Logic ---
-# (Adapted from notebook Cell 8 - Takes loaded artifacts as input)
-def recommend_similar_games_cosine(
-    target_app_id: int,
+def recommend_for_set(
+    target_app_ids: List[int],
     similarity_matrix: np.ndarray,
     item_map: Dict[int, int],
     item_map_inv: Dict[int, int],
     games_df: pd.DataFrame,
-    top_n: int = 20
+    top_n: int = 15
 ) -> pd.DataFrame:
     """
-    Recommends games similar to the target_app_id using loaded artifacts.
+    Recommends games based on a list of input game app_ids by aggregating
+    their similarity scores. Excludes input games from recommendations.
     """
     recommendations = []
-    if target_app_id not in item_map:
-        # This case should ideally be prevented by UI, but good to have
-        st.warning(f"Selected game ID {target_app_id} not found in model data.")
-        return pd.DataFrame(columns=['app_id', 'game_name', 'similarity_score'])
+    if not target_app_ids:
+        return pd.DataFrame(columns=['app_id', 'game_name', 'aggregated_score'])
 
-    try:
-        item_index = item_map[target_app_id]
-        similarity_scores = similarity_matrix[item_index]
-        item_score_pairs = list(enumerate(similarity_scores))
-        sorted_item_score_pairs = sorted(item_score_pairs, key=lambda x: x[1], reverse=True)
-        top_similar_items = sorted_item_score_pairs[1 : top_n + 1]
+    n_items = similarity_matrix.shape[0]
+    aggregated_scores = np.zeros(n_items, dtype=np.float64) # Use float64 for potentially large sums
+    input_indices = set()
+    valid_input_count = 0
 
-        for matrix_idx, score in top_similar_items:
-            try:
-                recommended_app_id = item_map_inv[matrix_idx]
-                game_info = games_df[games_df['app_id'] == recommended_app_id]
-                game_name = game_info['title'].iloc[0] if not game_info.empty else "Title Not Found"
+    # --- Aggregate scores from valid input games ---
+    for app_id in target_app_ids:
+        if app_id in item_map:
+            item_index = item_map[app_id]
+            # Safety check: Ensure index is within the matrix bounds
+            if 0 <= item_index < n_items:
+                aggregated_scores += similarity_matrix[item_index]
+                input_indices.add(item_index)
+                valid_input_count += 1
+            else:
+                # Log unexpected out-of-bounds index
+                print(f"Debug Warning: app_id {app_id} mapped to out-of-bounds index {item_index}.")
+        # Silently ignore app_ids not in item_map as they aren't part of the model
 
-                # Ensure score is a standard Python float for display compatibility
-                display_score = float(score)
+    if valid_input_count == 0:
+        # This occurs if none of the selected games are in the model's item_map
+        print("Warning: None of the selected app_ids were found in item_map.")
+        return pd.DataFrame(columns=['app_id', 'game_name', 'aggregated_score'])
 
+    # --- Generate candidate items (excluding input items) ---
+    candidate_items = []
+    for item_idx in range(n_items):
+        # Only consider items that have an inverse mapping (are valid items in the model)
+        # AND were NOT part of the input set
+        if item_idx in item_map_inv and item_idx not in input_indices:
+            candidate_items.append((item_idx, aggregated_scores[item_idx]))
+
+    # --- Sort candidates by aggregated score ---
+    candidate_items.sort(key=lambda x: x[1], reverse=True)
+
+    # --- Get top N recommendations ---
+    top_similar_items = candidate_items[:top_n]
+
+    # --- Map Indices back to App IDs and Get Names ---
+    for matrix_idx, score in top_similar_items:
+        try:
+            recommended_app_id = item_map_inv[matrix_idx]
+            # Look up game title efficiently using .loc after setting app_id as index (optional optimization)
+            # Or use the standard boolean indexing:
+            game_info = games_df[games_df['app_id'] == recommended_app_id]
+            if not game_info.empty:
+                game_name = game_info['title'].iloc[0]
                 recommendations.append({
                     'app_id': recommended_app_id,
                     'game_name': game_name,
-                    # Format score for better readability
-                    'similarity_score': f"{display_score:.4f}"
+                    'aggregated_score': float(score) # Ensure standard Python float
                 })
-            except (KeyError, IndexError) as e:
-                 print(f"Warning: Error processing recommendation index {matrix_idx}: {e}") # Log to console
-
-    except Exception as e:
-        st.error(f"An error occurred during recommendation generation: {e}")
-        return pd.DataFrame(columns=['app_id', 'game_name', 'similarity_score'])
+            else:
+                # Log if a recommended app_id doesn't have metadata (should be rare if games_df is filtered correctly)
+                print(f"Warning: Metadata not found for recommended app_id {recommended_app_id}")
+        except KeyError:
+            # Log if an index from item_map_inv doesn't work (data inconsistency)
+            print(f"Warning: Could not find app_id for matrix index {matrix_idx} in item_map_inv.")
+        except IndexError:
+             # Log if title lookup fails unexpectedly
+             print(f"Warning: IndexError during title lookup for recommended app_id {recommended_app_id}.")
 
     return pd.DataFrame(recommendations)
 
 
-# --- Streamlit App Layout ---
+# --- Streamlit App Main Function ---
+def main():
+    st.set_page_config(layout="wide", page_title="Game Recommender")
 
-st.set_page_config(layout="wide") # Use wider layout
+    # --- Load Artifacts ---
+    item_similarity_matrix, item_map, item_map_inv, games_pd = load_artifacts()
 
-# Load artifacts, proceed only if successful
-item_similarity_matrix, item_map, item_map_inv, games_pd = load_artifacts()
+    # --- Check if Artifacts Loaded ---
+    if any(artifact is None for artifact in [item_similarity_matrix, item_map, item_map_inv, games_pd]):
+        st.error("Failed to load one or more essential model artifacts. Cannot proceed.")
+        st.stop() # Halt execution
 
-if item_similarity_matrix is None:
-    st.stop() # Stop execution if artifacts failed to load
+    # --- Prepare Data for UI ---
+    # Create a DataFrame of games known to the model for the selection widget
+    # Ensure only games present in item_map (the model's vocabulary) are selectable
+    selectable_games_list = []
+    for app_id, title in games_pd[['app_id', 'title']].values:
+        if app_id in item_map:
+            selectable_games_list.append({'app_id': app_id, 'title': title})
 
-# --- App Title and Explanation ---
-st.title("🎮 Game Recommender: Item-Based Collaborative Filtering")
-st.markdown("""
-This app recommends games based on **collaborative filtering**. It analyzes patterns in user interaction data
-(like playtime or reviews) to find games that are frequently enjoyed by the *same groups of people*.
+    if not selectable_games_list:
+        st.error("No selectable games found in the loaded metadata that are also present in the model's item map.")
+        st.stop()
 
-Select a game you like below, and the app will suggest others that players with similar tastes also played.
-The **similarity score** indicates how closely related the games are based on shared user behavior.
-""")
-st.divider()
+    selectable_games_df = pd.DataFrame(selectable_games_list).drop_duplicates().sort_values('title')
 
-# --- User Input Area ---
-col1, col2 = st.columns([2, 1]) # Create columns for layout
+    # --- App Title and Explanation ---
+    st.title("🎮 Steam Game Recommender")
+    st.markdown("""
+    Select **one or more games** you enjoy from the list below.
+    This tool uses an item-based collaborative filtering model (based on user interaction patterns)
+    to suggest other games you might like, based on the combined similarity to your selections.
+    """)
+    st.divider()
 
-with col1:
-    st.subheader("Select a Game")
+    # --- User Input Area ---
+    col1, col2 = st.columns([3, 1]) # Give more space to selection
 
-    # --- Optional Tag Filtering ---
-    # Extract unique tags (handle potential list-like strings)
-    try:
-        all_tags = set()
-        # Safely evaluate the string representation of lists in the 'tags' column
-        games_pd['tags_list'] = games_pd['tags'].apply(lambda x: eval(x) if isinstance(x, str) and x.startswith('[') else [])
-        for tags in games_pd['tags_list']:
-            if isinstance(tags, list):
-                all_tags.update(tags)
-        valid_tags = sorted(list(all_tags))
-    except Exception as e:
-        st.warning(f"Could not process tags for filtering: {e}")
-        valid_tags = []
-
-    if valid_tags:
-        selected_tags = st.multiselect(
-            "Filter games by tags (optional):",
-            options=valid_tags,
-            # default=[] # No default tags selected
+    with col1:
+        st.subheader("Select Game(s) You Like")
+        selected_titles = st.multiselect(
+            label="Choose games from the list:", # Use label for clarity
+            options=selectable_games_df['title'].tolist(), # Pass list of titles
+            placeholder="Type or select game titles...",
+            label_visibility="collapsed" # Hide label visually if subheader is enough
         )
-    else:
-        selected_tags = [] # Ensure selected_tags exists even if tag processing fails
 
-    # Filter games based on selected tags
-    if selected_tags:
-        # Keep games that have ALL selected tags
-        filtered_games_list = games_pd[
-            games_pd['tags_list'].apply(lambda game_tags: all(tag in game_tags for tag in selected_tags))
-        ]
-    else:
-        # If no tags are selected, show all games
-        filtered_games_list = games_pd
+    with col2:
+        st.subheader("Settings")
+        top_n = st.slider(
+            "Number of recommendations:",
+            min_value=5,
+            max_value=25,
+            value=10, # Default value
+            step=1,
+            key="top_n_slider" # Add key for stability
+        )
 
-    # Prepare game titles for selectbox (handle potential duplicates if any)
-    # Sort by title for easier searching
-    selectable_games = filtered_games_list[['app_id', 'title']].drop_duplicates().sort_values('title')
+    st.divider()
 
-    # --- Game Selection Dropdown ---
-    selected_title = st.selectbox(
-        "Select a game you like:",
-        options=selectable_games['title'],
-        index=None, # No default selection
-        placeholder="Choose a game...",
-    )
+    # --- Generate and Display Recommendations ---
+    if selected_titles: # Check if the list of selected titles is not empty
+        try:
+            # Get the app_ids for the selected titles
+            selected_app_ids = selectable_games_df[selectable_games_df['title'].isin(selected_titles)]['app_id'].tolist()
 
-with col2:
-    st.subheader("Settings")
-    # --- Number of Recommendations Slider ---
-    top_n = st.slider(
-        "Number of recommendations:",
-        min_value=5,
-        max_value=25,
-        value=10, # Default value
-        step=1
-    )
+            if selected_app_ids:
+                titles_display = ", ".join([f"'{title}'" for title in selected_titles])
+                st.subheader(f"Recommendations based on: {titles_display}")
 
-st.divider()
-
-# --- Display Recommendations ---
-if selected_title:
-    try:
-        # Find the app_id for the selected title
-        selected_game_info = selectable_games[selectable_games['title'] == selected_title]
-
-        if not selected_game_info.empty:
-            selected_app_id = selected_game_info['app_id'].iloc[0]
-
-            st.subheader(f"Recommendations similar to '{selected_title}' (ID: {selected_app_id})")
-
-            # Generate recommendations
-            recommendations_df = recommend_similar_games_cosine(
-                target_app_id=selected_app_id,
-                similarity_matrix=item_similarity_matrix,
-                item_map=item_map,
-                item_map_inv=item_map_inv,
-                games_df=games_pd, # Pass the full games df for lookup
-                top_n=top_n
-            )
-
-            if not recommendations_df.empty:
-                # Display recommendations in a table
-                st.dataframe(
-                    recommendations_df,
-                    column_config={
-                        "app_id": st.column_config.NumberColumn("App ID", format="%d"),
-                        "game_name": st.column_config.TextColumn("Recommended Game Title"),
-                        "similarity_score": st.column_config.NumberColumn("Similarity Score", format="%.4f"),
-                    },
-                    hide_index=True,
-                    use_container_width=True
+                # Generate recommendations
+                recommendations_df = recommend_for_set(
+                    target_app_ids=selected_app_ids,
+                    similarity_matrix=item_similarity_matrix,
+                    item_map=item_map,
+                    item_map_inv=item_map_inv,
+                    games_df=games_pd,
+                    top_n=top_n
                 )
 
-                # Add the crucial explanation
-                st.markdown(f"_*These recommendations are based on collaborative filtering: games frequently played/reviewed by the same users who engaged with '{selected_title}'._")
+                if not recommendations_df.empty:
+                    st.dataframe(
+                        recommendations_df,
+                        column_config={
+                            "app_id": st.column_config.NumberColumn("App ID", format="%d"),
+                            "game_name": st.column_config.TextColumn("Recommended Game"),
+                            "aggregated_score": st.column_config.NumberColumn(
+                                "Similarity Score",
+                                help="Higher score means more similar to your selected set based on user interactions.",
+                                format="%.4f"
+                            ),
+                        },
+                        hide_index=True,
+                        use_container_width=True
+                    )
+                    st.caption(f"Displaying top {len(recommendations_df)} recommendations.")
+                else:
+                    # This might happen if valid games were selected but no suitable recommendations were found (e.g., all similar items were also selected)
+                    st.info("No suitable recommendations found for the selected combination of games. Try different or fewer games.")
             else:
-                st.info("No similar games found based on the current filtering and model data.")
-        else:
-            st.error("Could not find the selected game's App ID.") # Should not happen with selectbox
+                 # Should be rare if multiselect options are correct
+                 st.warning("Could not retrieve App IDs for selected titles.")
 
-    except Exception as e:
-        st.error(f"An error occurred while generating recommendations for '{selected_title}': {e}")
-        print(f"Error details: {e}") # Log detailed error to console
+        except Exception as e:
+            st.error("An unexpected error occurred while generating recommendations.")
+            # Log the full error for debugging if needed (e.g., to console or a logging service)
+            print(f"Error during recommendation generation: {e}")
+            import traceback
+            print(traceback.format_exc())
 
-elif st.session_state.get('ran_once', False): # Only show if not the very first run
-     st.info("Select a game from the dropdown above to see recommendations.")
+    # --- Initial State Message ---
+    # Use session state to show message only after first interaction if nothing is selected
+    if 'app_ran_once' not in st.session_state:
+        st.session_state['app_ran_once'] = False # Initialize
 
-# Mark that the app has run at least once
-st.session_state['ran_once'] = True
+    if not selected_titles and st.session_state['app_ran_once']:
+        st.info("Select one or more games above to get recommendations.")
+
+    # Mark that the app has run past the initial setup
+    st.session_state['app_ran_once'] = True
+
+
+# --- Run the App ---
+if __name__ == "__main__":
+    main()
