@@ -7,7 +7,6 @@ import os
 from typing import Dict, List, Tuple, Set, Any
 import scipy.sparse  # For CBF type hint
 
-# --- !!! Must be the first Streamlit command !!! ---
 st.set_page_config(layout="wide", page_title="Steam Game Recommender")
 
 # --- Configuration & Constants ---
@@ -168,7 +167,6 @@ def recommend_for_set_content(
     top_n: int = 10
 ) -> pd.DataFrame:
     """Recommends games based on content similarity using KNN on TF-IDF vectors."""
-    # (Code unchanged internally)
     if not target_app_ids:
         return pd.DataFrame(columns=['app_id', 'game_name', 'content_similarity'])
 
@@ -228,7 +226,7 @@ def recommend_for_set_content(
     return pd.DataFrame(recommendations)
 
 
-# --- CF Recommendation Logic (Common function for Similarity Matrix based approaches) ---
+# --- CF Recommendation Logic ---
 def recommend_for_set_similarity_based(
     target_app_ids: List[int],
     similarity_matrix: np.ndarray,
@@ -546,7 +544,7 @@ def run_app():
 
 # --- Run the App ---
 if __name__ == "__main__":
-    # Create models directory if it doesn't exist (optional, good practice)
+    # Create models directory if it doesn't exist (good practice)
     if not os.path.exists(MODELS_DIR):
         os.makedirs(MODELS_DIR)
         st.warning(f"Created models directory at '{MODELS_DIR}'. Ensure your model artifact files (.pkl, .npy) are placed here.")
