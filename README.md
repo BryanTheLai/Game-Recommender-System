@@ -32,9 +32,6 @@ Top N Game Recommendations and using three models
 
     ```
     ├── data/
-    │   ├── external/    # API data
-    │   ├── interim/     # Transformed data
-    │   ├── processed/   # Final data for modeling
     │   └── raw/         # Original data
     ├── models/
     │   └── *.pkl       # Trained models (e.g., pickled)
