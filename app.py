@@ -355,8 +355,8 @@ def run_app():
             st.stop()
 
     elif model_choice == "Collaborative Filtering":
-        st.subheader("Collaborative Filtering (Original)")
-        model_description = "Recommends games based on **user interaction patterns** (what similar users play - original model)."
+        st.subheader("Collaborative Filtering")
+        model_description = "Recommends games based on **user interaction patterns** (what similar users play)."
         model_load_func = load_cf_artifacts
         recommendation_func = recommend_for_set_similarity_based # Use generic similarity func
         artifacts = model_load_func()
@@ -377,8 +377,7 @@ def run_app():
     # --- NEW: Handle Matrix Factorization Choice ---
     elif model_choice == "Matrix Factorization":
         st.subheader("Matrix Factorization (Interaction Similarity)")
-        model_description = "Recommends games based on **user interaction patterns** (derived from interaction matrix similarity - new model)."
-        st.caption("_Note: This implementation uses Item-Item Cosine Similarity derived from user interaction data, similar to Collaborative Filtering but potentially trained on different data/parameters._")
+        model_description = "Recommends games based on **user interaction patterns** (derived from interaction matrix similarity)."
         model_load_func = load_mf_artifacts # Use the new loading function
         recommendation_func = recommend_for_set_similarity_based # Use generic similarity func
         artifacts = model_load_func()
@@ -483,7 +482,7 @@ def run_app():
                 elif model_choice == "Collaborative Filtering":
                     internal_score_col = "aggregated_score"
                     score_col_name = "Interaction Score"
-                    score_help_text = "Higher score = Stronger predicted affinity based on user interactions (Original CF)."
+                    score_help_text = "Higher score = Stronger predicted affinity based on user interactions (CF)."
                     score_format = "%.4f"
                 elif model_choice == "Matrix Factorization":
                     internal_score_col = "aggregated_score"
