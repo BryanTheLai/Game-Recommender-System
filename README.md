@@ -1,3 +1,19 @@
+# Steps to run
+
+1. Create and activate a virtual environment  
+    ```bash
+    python -m venv venv
+    venv\Scripts\activate
+    ```
+2. Install project dependencies  
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Launch the Streamlit app  
+    ```bash
+    streamlit run app.py
+    ```  
+
 # Game Recommender System
 Put the csv files in data/raw: [Steam Dataset from Kaggle](https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam)
 
