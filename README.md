@@ -28,7 +28,7 @@ Top N Game Recommendations and using three models
 3. Matrix Factorization
 
 
-    ## Project Structure
+    ## Project Structure ([Cookie Cuter Template](https://github.com/drivendataorg/cookiecutter-data-science))
 
     ```
     ├── data/
@@ -36,14 +36,10 @@ Top N Game Recommendations and using three models
     │   ├── interim/     # Transformed data
     │   ├── processed/   # Final data for modeling
     │   └── raw/         # Original data
-    ├── docs/
-    │   └── README.md    # Project documentation
     ├── models/
     │   └── *.pkl       # Trained models (e.g., pickled)
     ├── notebooks/
     │   └── [NN]-*.ipynb # Jupyter notebooks (e.g., 01-data-exploration.ipynb)
-    ├── references/
-    │   └── *.pdf        # Data dictionaries, manuals
     └── requirements.txt # Project dependencies
     ```
 
