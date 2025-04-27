@@ -44,6 +44,7 @@ Top N Game Recommendations and using three models
     ```
 
     ## Data Exploration
+   - Original dataset
     ```
     games.csv:
     app_id			-Int		- product id of game 
